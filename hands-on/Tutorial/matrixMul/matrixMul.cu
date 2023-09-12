@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <sys/time.h>
 
 __global__
 void MatrixMulKernel(int m, int n, int k, float* A, float* B, float* C)
@@ -63,8 +64,20 @@ void MatrixMulHost(int m, int n, int k)
     dim3 dimGrid((k - 1) / TILE_WIDTH + 1, (m - 1) / TILE_WIDTH + 1, 1);
     dim3 dimBlock(TILE_WIDTH, TILE_WIDTH, 1);
 
-    MatrixMulKernel<<<dimGrid, dimBlock>>>(m, n, k, d_A, d_B, d_C);
+    // Print the information being multiplied and the hardware being used
+    printf("Matrix A: %d x %d\n", m, n);
+    printf("Matrix B: %d x %d\n", n, k);
+    printf("Grid size: %d x %d\n", dimGrid.x, dimGrid.y);
+    printf("Block size: %d x %d\n", dimBlock.x, dimBlock.y);
 
+    // Measure time
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    MatrixMulKernel<<<dimGrid, dimBlock>>>(m, n, k, d_A, d_B, d_C);
+    cudaDeviceSynchronize();
+    gettimeofday(&end, NULL);
+    printf("Time: %ld us\n", (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec));
+    
     // Copy result back to host
     cudaMemcpy(C, d_C, m * k * sizeof(float), cudaMemcpyDeviceToHost);
 
